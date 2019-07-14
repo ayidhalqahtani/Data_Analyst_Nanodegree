@@ -1,0 +1,629 @@
+---
+title: "RED WINE EXPLORATION BY AYIDH"
+output: html_document
+---
+========================================================
+
+
+# Introduction :
+We will analyze the red wind quality dataset by using R and apply exploratory data analysis techniques to investigate and explore the relationship in the dataset from difference anlges one variables , two varibales , multi-variables. Further , we will see the disturbtion of the data and outliers.
+
+
+
+###### WE included all libraries that we will use in our analysis.
+###### library(ggplot2)
+###### library(GGally)
+###### library(dplyr)
+###### library(gridExtra)
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+ 
+
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(GGally)
+
+```
+
+
+
+
+
+# Univariate Plots Section
+
+######  we load  the  dataset winequalityred by using read.csv function in R .
+```{r echo=FALSE, Load_the_Data}
+  RW <- read.csv("wineQualityReds.csv")
+
+
+```
+##### we explore the dataset by seeing the names of variables and other features as below 
+
+```{r echo=FALSE, Univariate_Plots}
+names(RW)
+head(RW,10)
+
+```
+```{r}
+summary(RW$X)
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, EXPLORE_DATASET_1}
+str(RW)
+```
+
+
+
+##### From the above preliminary analysis, we found out that there are  1599 instances of red wine and 13 features(variables) for each instance. All these variables are numericals. we can tell from the first glance there are some outliers.
+ 
+```{r echo=FALSE, message=FALSE, warning=FALSE,Univariate_Plots_1}
+
+ggplot(data=RW, aes(x=quality)) +
+  geom_histogram(binwidth = 1,stat='count',color = 'black', fill = '#F79420') + 
+  labs(title='The distribution of quality over the red wine instances')
+
+
+summary(RW$quality)
+```
+
+
+
+
+#### The above plot shows the distribution of the quality of wine over the provided dataset, we can see that most of the red wine instances have average quality as can be seen from the above plot as well as the summary function for the red wine data with quality. So , we will create a new categorical variable for the discrete quality variable to simplify our analysis and we will name it rate.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE , plot_2}
+RW$quality <- factor(RW$quality, ordered = T)
+RW$rate <- ifelse(RW$quality < 5, 'poor', ifelse( 
+   RW$quality < 7, 'average', 'excellent'))
+  
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE ,plot2}
+
+ggplot(data=RW, aes(x=rate)) +
+geom_histogram(stat='count', color = 'black', fill = '#099DD9')+
+xlab('The Rate of alcohol quality ') +
+  ylab('Number of instance ') + 
+  labs(title='The distribution of rate over the red wine instances')
+
+
+```
+
+
+#####  As can be seen above , most the red wine rate fells down on the average section as we said in the previous comment.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE ,plot3}
+
+ggplot(data=RW, aes(x=alcohol)) +
+geom_line(stat='count', color = 'black', fill = '#099DD9')+
+xlab('The concentere of alcohol in the red wine ') +
+  ylab('Count ') + 
+  labs(title='The distribution of alcohol over the red wine instances')
+
+
+summary(RW$alcohol)
+
+```
+
+
+##### The above the plot shows that the concentere of alchohol in the red wine instance. 
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE ,plot4}
+ggplot(data=RW, aes(x=citric.acid),bandwidth=0.01) +
+   geom_histogram(color = 'black', fill = '#099DD9',bins = '30') + 
+  labs(title='The distribution of citric.acid over the red wine instances')
+
+summary(RW$citric.acid)
+
+```
+
+
+##### The above graph shows the distribution of citric acid over the red wine instance , as can be seen that most of the distribution below 0.50 and it also has outlier as can be seen at 1.00 .
+
+##### The below plot shows the concentration of red wine by seeing the distribution of fixed acidity variable over the whole instnaces.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE ,plot5}
+
+
+ggplot(data=RW, aes(x=fixed.acidity)) +
+  geom_histogram(binwidth = 1,color = 'BLACK', fill = '#099DD9',bins = 30) + 
+  labs(title='The distribution of fixed.acidity over the red wine instances')
+
+summary(RW$fixed.acidity)
+
+```
+
+##### The residula.sugar variable concentration are very little in the red wine data instance as can be seen in the blow graph ,most of the instances have less 3 residula sugar. On the other words , more concentration of the red wines around 2 . So , it's not normally distributed . 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE ,plot6}
+
+
+   
+p<- ggplot(RW, aes( x = 1, y = residual.sugar ) ) + 
+               geom_jitter(alpha = 0.1 ) +
+               geom_boxplot(alpha = 0.2, color = 'red' )
+
+p1<- ggplot(RW, aes( x   = residual.sugar  ) ) + 
+                   geom_histogram(bins = 30,color = 'BLACK', fill = '#099DD9')
+
+
+
+plist<- list(p,p1)
+
+grid.arrange(grobs= plist, ncol=2)
+summary(RW$residual.sugar)
+
+```
+
+##### The blow graph shows the distribution of volatile acidity  through the red wine data set,it shows bimodal between 0.3 and 0.7 and there are some outliers in the higher ranges as can be seen below plots.
+
+```{r echo= FALSE ,message=FALSE, warning= FALSE,plot7}
+
+
+
+p<- ggplot(RW, aes( x = 1, y = volatile.acidity ) ) + 
+               geom_jitter(alpha = 0.1 ) +
+               geom_boxplot(alpha = 0.2, color = 'red' )
+
+p1<- ggplot(RW, aes( x   = volatile.acidity  ) ) + 
+                   geom_histogram(bins = 30,color = 'BLACK', fill = '#099DD9')
+
+
+
+plist<- list(p,p1)
+
+grid.arrange(grobs= plist, ncol=2)
+ summary(RW$volatile.acidity)
+
+```
+
+##### The below plot shows the distribution of chlorides in the red wine data set, it shows that the distribution is not normally distributed.
+
+```{r echo= FALSE ,message=FALSE, warning= FALSE,plot8}
+
+ggplot(data=RW, aes(x=chlorides)) +
+  geom_histogram(binwidth = .01,color = 'BLACK', fill = '#099DD9' ) + 
+  labs(title='The distribution of chlorides over the red wine instances')
+
+
+summary(RW$chlorides)
+
+```
+
+##### The distribution of free sulfur dioxide of the red wine seems not normal distribution as can be seen below.
+
+
+```{r echo= FALSE ,message=FALSE, warning= FALSE,plot9}
+
+ggplot(data=RW, aes(x=free.sulfur.dioxide)) +
+  geom_histogram(binwidth = 4,color = 'BLACK', fill = '#099DD9' ) + 
+  labs(title='The distribution of free.sulfur.dioxide over the red wine instances')
+
+summary(RW$free.sulfur.dioxide)
+
+```
+
+
+##### The distribution of total sulfur dioxide of the red wine seems not normal distribution as can be seen below.
+
+
+```{r echo= FALSE ,message=FALSE, warning= FALSE,plot10}
+
+ggplot(data=RW, aes(x=total.sulfur.dioxide)) +
+  geom_histogram(binwidth = 4,color = 'BLACK', fill = '#099DD9' )  + 
+  labs(title='The distribution of total.sulfur.dioxide over the red wine instances')
+
+
+summary(RW$total.sulfur.dioxide)
+
+
+```
+
+
+##### The distribution of density variable for the red wine instances is normal distribution as can be seen in the below graph.
+
+```{r echo= FALSE ,message=FALSE, warning= FALSE,plot11}
+
+ggplot(data=RW, aes(x=density)) +
+  geom_histogram(binwidth = 0.001,color = 'BLACK', fill = '#099DD9' ) + 
+  labs(title='The distribution of density over the red wine instances')
+
+summary(RW$density)
+
+```
+
+
+###### Also , the pH Distribution seems to be like the density's distribution which normally distributed.
+
+```{r echo= FALSE ,message=FALSE, warning= FALSE,plot12}
+
+ggplot(data=RW, aes(x=pH)) +
+  geom_histogram(binwidth = 0.1,color = 'BLACK', fill = '#099DD9' )+
+  scale_x_continuous(breaks = c(2.8,3,3.2,3.5,3.8,4)) + 
+  labs(title='The distribution of pH over the red wine instances')
+summary(RW$pH)
+
+```
+
+##### The sulphates distribution of the red wine isntances is not normally distributed.
+
+
+```{r echo= FALSE ,message=FALSE, warning= FALSE,plot13}
+
+ggplot(data=RW, aes(x=sulphates)) +
+  geom_histogram(binwidth = 0.1,color = 'BLACK', fill = '#099DD9' ) + 
+  labs(title='The distribution of sulphates over the red wine instances') 
+
+summary(RW$sulphates)
+
+```
+
+
+##### The below graph shows the distribution of alcohol for the red wine data set and it is not normal distribution.
+
+
+```{r echo= FALSE ,message=FALSE, warning= FALSE,plot14}
+
+ ggplot(data=RW, aes(x=alcohol)) +
+  geom_histogram(binwidth =0.1,color = 'BLACK', fill = '#099DD9' ) + 
+  labs(title='The distribution of alcohol for the red wine instances')
+
+```
+
+
+
+# Univariate Analysis
+
+
+### What is the structure of your dataset?
+
+The dataset contains 1599 redwine instances along with 13 variables. We have added one categorical variable that represents the quality varibales for the red wine. Moreover, the whole variables are numerical but the variable that we created above. Most the red wine rate is average.
+
+### What is/are the main feature(s) of interest in your dataset?
+The main feature that interests me in the dataset is the quality of the redwine especilly with alcohol. I want to see if there's any correlation between these two features along with others.
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+I will investigate the other features like ph, density, acidity (critic.acid,fixeda.cidity). Further, residul.Sugar and total.sulfur.dioxed might have affect on the people's taste of the red wine.
+
+### Did you create any new variables from existing variables in the dataset?
+Yes , I did create rate variable based on the quality variable which help us in our analysis to simplify. 
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+I almost investigated most the features, there was unusual distributions in two plots above critic.acid and alcohol. We will investigate more about these features but with other variables. 
+
+# Bivariate Plots Section
+
+ 
+```{r echo=FALSE ,message=FALSE, warning= FALSE, Bivariate_Plots15}
+
+
+ggplot(aes(factor(quality), 
+            alcohol), 
+        data = RW) +
+  geom_jitter( alpha = .3)  +
+  geom_boxplot( alpha = .3,color = 'BLUE')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4)+ 
+  labs(title='The quality of red wine instances with  alcohol')
+```
+
+
+#### we investigated  the relationship between alcohol and quailty because I am curious to see if there's any relationship, the above graph shows that there's a relationship between the quality of red wine and alcohol concentration on the instances.
+
+
+```{r echo=FALSE ,message=FALSE, warning= FALSE, Bivariate_Plots16}
+
+ggplot(aes(x = rate, y =  volatile.acidity), data = RW) +
+   geom_point(alpha= 1/20,position =  position_jitter(h=0) ,color = 'BLACK',fill =  '#F79420')+  coord_trans(y='sqrt') + 
+  labs(title='The rate of red wine instances with volatiel acidity')
+
+
+
+```
+
+##### As can be seen in the above plot , it shows that there is no correlation between rate (quality of the red wine instances)and the volatite acidity
+
+
+
+
+```{r echo=FALSE ,message=FALSE, warning= FALSE, Bivariate_Plots17}
+
+ggplot(data = RW,
+                aes(x=log10(fixed.acidity), y=citric.acid)) +
+  geom_jitter(alpha=1/4, color=I('#F79420')) +
+  geom_smooth(method = 'lm', color=I('#D8A525'))+
+  xlab('Fixed Acidity') +
+  ylab('Citric Acid')+ labs(title='The relationship between fixed acidity with critic acid ')
+
+```
+
+
+
+#### The above plot shows the relationship between fixed acidity with critic acid. Further, they are correlated to each other by 0.6717034.
+
+
+
+```{r echo=FALSE ,message=FALSE, warning= FALSE, Bivariate_Plots18}
+
+
+ggplot(aes(x = quality, y =  chlorides), data = RW) +
+   geom_point(alpha= 1/20,position =  position_jitter(h=0) ,
+                  color = 'BLACK',fill =  '#F79420')+  coord_trans(y='sqrt')+
+  labs(title= 'Chlorides with quality of the red win instances')
+ 
+```
+
+#### The above plot shows that there is no relationship or correlation between chlorides and qaulity variables.
+
+```{r echo=FALSE ,message=FALSE, warning= FALSE, Bivariate_Plots19}
+
+
+ 
+ ggplot(aes(factor(quality), 
+            density), 
+        data = RW) +
+  geom_jitter( alpha = .3)  +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4)+
+  labs(title= 'THE desnity with quality of the red win instances')
+```
+
+#####  The above plot shows that there is no relationship  between density and qaulity variables , however, excellent quality wine has low desnity .
+
+
+```{r echo=FALSE ,message=FALSE, warning= FALSE, Bivariate_Plots20}
+
+ ggplot(data = RW,aes(x = pH, y = citric.acid) ) + 
+  geom_point(alpha = 1/4, position = position_jitter(h = 0)) +
+  coord_trans(x = "log10") +
+  geom_smooth(method = "lm", color = "red")+
+ labs(title= 'The relationship between citric acid and pH plot')
+
+```
+
+```{r echo=FALSE ,message=FALSE, warning= FALSE, Bivariate_Plots21}
+
+ggplot( data = RW,aes(x = pH, y = density)) + 
+    geom_point(alpha = 1/4, position = position_jitter(h = 0)) +
+    coord_trans(x = "log10") +
+    geom_smooth(method = "lm", color = "red") +
+ labs(title= 'The relationship between desnity and pH plot')
+
+
+```
+
+
+
+####  The prevoius plots show the relationship between citric.acid  and density variables of red wine with pH variable.There are relationships between these variables with pH variables.  
+
+
+
+```{r echo=FALSE ,message=FALSE, warning= FALSE, Bivariate_Plots22} 
+ggplot( data = RW,aes(x = total.sulfur.dioxide, y = free.sulfur.dioxide)) + 
+    geom_point(alpha = 2/5, position = position_jitter(h = 10)) +
+    coord_trans(x = "log10") +
+    geom_smooth(method = "lm", color = "red") +
+  labs(title= 'The releationship between total sulfur dioxide and free sulfur dioxide plot')
+```
+
+
+#### The above graph shows a strong relationship between the two variables total and freee sulfur dioxide. 
+
+# Bivariate Analysis
+ 
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+
+We did invesigation about the relationships of vairables for the red wine dataset ,and we found out the below:
+It seems that there's a relationship between the quality of wine and the concentration of alcohol. However,there is a strong relationship between citric acid and the quality of red wine the more citric acide concentration , the better quality the red wine will be.  
+
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+we have checked my relatiohships between the other features such as pH with density and citric acid and total sulfur dioxide and free sulfur dioxide. we found there are some relationships between these variables. Nevertheless , there is a strong relatioship between total and free sulfur dioxide variables as can be seen in the above graphs .  
+
+### What was the strongest relationship you found?
+I think the strongest relationship that I found was the relationship between total and free sulfur dioxide variables. Further, the citric acid with Fixed acidity variable. 
+
+# Multivariate Plots Section
+
+ 
+```{r echo=FALSE, warning=FALSE,message=FALSE,Multivariate_Plots1}
+ggplot(data = RW,
+       aes(x=total.sulfur.dioxide, y=free.sulfur.dioxide)) +
+  geom_point(aes(colour=factor(quality)), size=0.5) +
+  scale_colour_manual(name= "Quality", 
+                     values = c("#FF4545", "#C42323", "#F7BB31",
+                                 "#A97E1A", "#FF8A28", "#B46C30")) +
+  facet_wrap(~rate) +
+  theme(axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 8)) +
+  xlab('total sulfur dioxide') +
+  ylab('free sulfur dioxide') +
+  labs(title= 'The rate of red wine based on total and free sulfur dioxide')
+
+
+  
+```
+
+```{r}
+cor(RW$free.sulfur.dioxide,RW$total.sulfur.dioxide)
+```
+
+### The above plot shows the correlation between the two variables free and total sulfur dioxide for the red wine quality. 
+
+
+
+```{r echo=FALSE, warning=FALSE,message=FALSE,Multivariate_Plots12}
+
+ggplot(data = RW,
+       aes(x=total.sulfur.dioxide, y=alcohol)) +
+  geom_point(aes(colour=factor(quality)), size=0.5) +
+  scale_colour_manual(name= "Quality", 
+                     values = c("#FF4545", "#C42323", "#F7BB31",
+                                 "#A97E1A", "#FF8A28", "#B46C30")) +
+  facet_wrap(~rate) +
+  theme(axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 8)) +
+  xlab('total sulfur dioxide') +
+  ylab('alcohol') +
+  labs(title= 'The rate of red wine based on total sulfur dioxide and alcohol')
+
+```
+
+
+##### the above graph shows the relationship between alcohol and total sulfur dioxide variables with the rate of red wine instance.
+
+```{r echo=FALSE, warning=FALSE,message=FALSE,Multivariate_Plots2}
+
+
+ggplot(data = RW,
+       aes(y = citric.acid, x = fixed.acidity,
+           color = quality)) +
+  geom_point() +
+   xlab('fixed acidity') +
+  ylab('citric acid ') +
+  labs(title= 'The Relationship between fixed acidity wiht citric acid comparing to the quality of red wine')
+   
+```
+
+```{r}
+cor.test(RW$citric.acid, RW$fixed.acidity)
+```
+
+
+```{r echo=FALSE}
+RW <- transform(RW,quality =as.numeric(quality))
+
+```
+
+```{r}
+cor.test(RW$citric.acid, RW$quality)
+cor.test(RW$fixed.acidity, RW$quality)
+
+```
+##### The above graph shows that a strong relationship between fixed acidity and citric acid , and they are correlated stronglly to each other by 0.67. However,  I tried to get the correlation estimation between citrix acid or fixed acidity but I found an error becuase the quality variable is not numeric . It's integer, so I will have to  change it to be numberic as can be seen abvoe. We found out the correlation between citric acid with quality stronger(0.2263725) than fixed acidity (0.1240516)
+
+
+```{r echo=FALSE, warning=FALSE,message=FALSE,Multivariate_Plots3}
+ ggplot(data = RW,
+       aes(x=pH, y=density)) +
+  geom_point(aes(colour=factor(quality)), size=0.5) +
+   scale_color_brewer(type='seq',
+                   guide=guide_legend(title='Quality'))+
+  facet_wrap(~rate) +
+  theme(axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 8)) +
+  xlab('pH') +
+  ylab('Density')+
+  labs(title= 'The density with pH relationship with quality red wine instances')
+
+
+
+```
+
+######  The previous plot shows the relationship between Density and pH variables along with red wine quality ,we can see that the low level of pH can have both high density and excellent quality of red wine instane. Further, it can have poor quality of red wine for the pH. it gives us a clue that the other variables could alos have an influence on the quality of red wine too.
+
+
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+We looked into different relationships between the variables in the red wine datasets and we found out that there is a strong relationship between fixed acidity and citric acid , and they are correlated stronglly to each other. Further, there is  relationship between Density and pH variables along with red wine quality ,we can see that the low level of pH can have both high density and excellent quality of red wine instane. Further, it can have poor quality of red wine for the pH. it gives us a clue that the other variables could alos have an influence on the quality of red wine too.
+
+
+### Were there any interesting or surprising interactions between features?
+Yes ,there are many interesting interactions between the total sulfur dioxide and alcohol even though there are some outliers in the excellent quality for the red wine. Moreover, there are interesting interactions between citric acid and fixed acidity variables . 
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+strengths and limitations of your model.
+
+------
+
+# Final Plots and Summary
+
+
+### Plot One
+```{r echo=FALSE,message=FALSE,warning=FALSE,Plot_One}
+
+ggplot(data = RW,
+                aes(x=log10(fixed.acidity), y=citric.acid)) +
+  geom_jitter(alpha=1/4, color=I('#F79420')) +
+  geom_smooth(method = 'lm', color=I('#D8A525'))+
+  xlab('Fixed Acidity (tartaric acid -g /dm^3)') +
+  ylab('Citric Acid (g/dm^3)')+ labs(title='The relationship between fixed acidity with critic acid ')
+
+```
+
+### Description One
+ The plot one shows the relationship between fixed acidity with critic acid. Further, they are correlated to each other by 0.6717034. 
+
+### Plot Two
+```{r echo=FALSE,message=FALSE,warning=FALSE, Plot_Two}
+
+  ggplot(data = RW,
+       aes(x=pH, y=density)) +
+  geom_point(aes(colour=factor(quality)), size=0.5) +
+   scale_color_brewer(type='seq',
+                   guide=guide_legend(title='Quality'))+
+  facet_wrap(~rate) +
+  theme(axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 8)) +
+  xlab('pH (g/cm^3)') +
+  ylab('Density (g/cm^3)')+
+  labs(title= 'The density with pH relationship with quality red wine instances')
+
+```
+
+### Description Two
+The  plot two shows the relationship between Density and pH variables along with red wine quality ,we can see that the low level of pH can have both high density and excellent quality of red wine instane. Further, it can have poor quality of red wine for the pH. it gives us a clue that the other variables could alos have an influence on the quality of red wine too.
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+ ggplot(aes(x = fixed.acidity, 
+           y = citric.acid  , color = factor(quality)), 
+       data = RW) +
+      geom_point(alpha = 0.8, size = 1) +
+      geom_smooth(method = "lm", se = FALSE,size=1)  +
+  scale_color_brewer(type='seq',
+                   guide=guide_legend(title='Quality')) +
+   xlab('fixed acidity (tartaric acid -g /dm^3)') +
+  ylab('citric acid (g/dm^3)') +
+  labs(title= 'The Relationship between fixed acidity wiht citric acid comparing to the quality of red wine')
+
+   
+```
+
+### Description Three
+The plot three shows  a strong relationship between fixed acidity and citric acid , and they are correlated stronglly to each other by 0.67. However,  I tried to get the correlation estimation between citrix acid or fixed acidity and  We found out the correlation between citric acid with quality stronger(0.2263725) than fixed acidity (0.1240516)
+
+------
+
+# Reflection
+We have investigated the red wine data set which has 1599 instance and 13 variables. Further, we created one categorical variable to represent the rate of the red wine quality. Moreover , one variable , two variables , Mulit-variables plot were created through out the above investigations. We found out that there are many varibales are correlated to each others like citric acid and fixed acidity. In addition , Many other factors may affect the quality of the red wine instance like total sulfur toxidie , alcohol and other variables. We run out to some issues in calcualting the correlation between the quality and other variables . So,we had to tranfer the quality from integer to numberic variables as we did above to be able to get the estimation of correlation between chemical factors and quality of the red wine instance. This project was a great excercise and lesson for me even I have a lot and want to do like correlation matrix and heatmap but maybe in future works and  courses .
+
