@@ -1,0 +1,679 @@
+
+# coding: utf-8
+
+# ##### The area that I chose is Baltimore because I have lived there for three years. eventhough , I have used riyadh also but I did not include it in my notes.
+
+# In[1]:
+
+# Import xml library to handle XML files
+import xml.etree.cElementTree as ET
+#Import defaultdict from collections to create a dictionary with default value
+from collections import defaultdict
+#Import re library for regular expression
+import re
+import pprint
+import cerberus
+# to be able to import data from xml schema to csv file
+import schema
+# useful library to deal with csv files 
+import csv
+import codecs
+# THis library to be able to handle sqlite databse
+import sqlite3
+
+
+# In[2]:
+
+#" We created file_osm varaibale to open the Baltimore osm file and this is from udacity .
+file_osm = open("Baltimore_sample1.osm", "r")
+tree = ET.parse(file_osm) 
+root = tree.getroot()    
+root_children = set()
+for element in root:
+    root_children.add(element.tag)
+print "Root Children",root_children
+all_nodes = set()
+
+for element in root.iter(): 
+    all_nodes.add(element.tag)
+print "All Nodes",all_nodes
+#"
+
+
+# In[ ]:
+
+# this is taken from udacity and it's for creating  sample file of our baltimore big file osm file
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import xml.etree.ElementTree as ET  # Use cElementTree or lxml if too slow
+
+OSM_FILE = "Baltimore.osm"  # Replace this with your osm file
+SAMPLE_FILE = "Baltimore_sample.osm"
+
+k = 50 # Parameter: take every k-th top level element
+
+def get_element(osm_file, tags=('node', 'way', 'relation')):
+    """Yield element if it is the right type of tag
+
+    Reference:
+    http://stackoverflow.com/questions/3095434/inserting-newlines-in-xml-file-generated-via-xml-etree-elementtree-in-python
+    """
+    context = iter(ET.iterparse(osm_file, events=('start', 'end')))
+    _, root = next(context)
+    for event, elem in context:
+        if event == 'end' and elem.tag in tags:
+            yield elem
+            root.clear()
+
+
+with open(SAMPLE_FILE, 'wb') as output:
+    output.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    output.write('<osm>\n  ')
+
+    # Write every kth top level element
+    for i, element in enumerate(get_element(OSM_FILE)):
+        if i % k == 0:
+            output.write(ET.tostring(element, encoding='utf-8'))
+
+    output.write('</osm>')
+
+
+# ### To check the number of tags and see what are they ?
+
+# In[3]:
+
+# this function is used to count the number of tags. 
+def count_tags(filename):
+    t = {}
+    for _,elem in ET.iterparse(filename):
+        if elem.tag in t:
+            t[elem.tag] +=1
+        else:
+            t[elem.tag] =1
+    return t
+
+
+def test():
+
+    tags = count_tags('Baltimore_sample1.osm')
+    print(tags)
+   
+
+    
+
+if __name__ == "__main__":
+    test()
+
+
+# In[ ]:
+
+
+
+
+# In[4]:
+
+# we have used openstreetmap case study functions besides above functions  ,The below two functions key_type() 
+#and process_map(), these two functions will help to seggregate our key values using regular expression matching.
+#We are seprating the dataset in 4 groups : lower, lower_colon,problemchars and other. 
+
+lower = re.compile(r'^([a-z]|_)*$')
+lower_colon = re.compile(r'^([a-z]|_)*:([a-z]|_)*$')
+problemchars = re.compile(r'[=\+/&<>;\'"\?%#$@\,\. \t\r\n]')
+
+
+def key_type(element, keys):
+    if element.tag == "tag":
+        if re.search(problemchars, element.attrib['k']):
+            keys['problemchars'] += 1
+        elif re.search(lower, element.attrib['k']):
+            keys['lower'] += 1
+        elif re.search(lower_colon, element.attrib['k']):
+            keys['lower_colon'] += 1
+       
+    else:
+            keys['other'] += 1
+    return keys
+
+
+def process_map(filename):
+    keys = {"lower": 0, "lower_colon": 0, "problemchars": 0, "other": 0}
+    for _, element in ET.iterparse(filename):
+        keys = key_type(element, keys)
+
+    return keys
+
+
+
+def test():
+  
+    keys = process_map('Baltimore_sample1.osm')
+    pprint.pprint(keys)
+    
+
+
+if __name__ == "__main__":
+    test()
+
+
+# In[13]:
+
+#AS we have stated above these two functions from the case study , and their task is to find out how many unique users
+#have contributed to the Baltimore map 
+def get_user(element):
+    if ('uid') in element.attrib:
+        return element.attrib['uid']
+
+
+def process_map(filename):
+    user = set()
+    for _, element in ET.iterparse(filename):
+        uid=get_user(element)
+        if uid != None:
+            user.add(uid)
+
+    return user
+
+
+def test():
+
+    users = process_map('Baltimore_sample1.osm')
+    print(len(users))
+    pprint.pprint(users)
+   
+
+
+if __name__ == "__main__":
+    test()
+
+
+# In[5]:
+
+OSMFILE = "Baltimore_sample1.osm"
+#
+street_type_re = re.compile(r'\b\S+\.?$', re.IGNORECASE)
+
+
+expected = ["Street", "Avenue", "Boulevard", "Drive", "Court", "Place", "Square", "Lane", "Road", 
+            "Trail", "Parkway", "Commons"]
+
+
+mapping = { "St": "Street",
+            "St.": "Street",
+            "street": "Street",
+            "Ave":"Avenue",
+            "Blvd.":"Boulevard",
+            "Blvd":"Boulevard",
+            "Rd":"Road",
+            'Hwy': "Highway",
+             'Hwy.': "Highway",
+             "highway":"Highway",
+             'CIrcle':'Circle',
+             'Ct.':'Court',
+             'Ct':"Court",
+             'Hwy':"Highway",
+             'Westparkway':"West Parkway"
+           
+           
+            }
+
+
+def audit_street_type(street_types, street_name):
+    k = street_type_re.search(street_name)
+    if k:
+        Stype = k.group()
+        if Stype not in expected:
+            street_types[Stype].add(street_name)
+
+
+def is_street_name(elem):
+     return (elem.tag == "tag") and (elem.attrib['k'] == "addr:street")
+ 
+
+def audit(osmfile):
+    osm_file = open(osmfile, "r")
+    street_types = defaultdict(set)
+    for event, elem in ET.iterparse(osm_file, events=("start",)):
+
+        if elem.tag == "node" or elem.tag == "way":
+            for tag in elem.iter("tag"):
+                if is_street_name(tag):
+                    audit_street_type(street_types, tag.attrib['v'])
+    osm_file.close()
+    return street_types
+
+
+updated_streets = {}
+ 
+def update_name(name, mapping):
+   k = street_type_re.search(name)
+   if k:
+        type_of_street = k.group()
+        if type_of_street in mapping:
+         new = street_type_re.sub(mapping[type_of_street],name)
+         updated_streets[name] = new
+         return new
+
+
+
+
+
+# In[14]:
+
+#To check the streets' name , we called audit function to audit the Baltimore OSM file, and it will print the street as dict list
+
+audit(OSMFILE)
+
+
+# In[6]:
+
+
+#  we used clean function to call the update and update_name functions to clean the data up to the given mapping
+def clean():
+    Stypes = audit(OSMFILE)
+    pprint.pprint(dict(Stypes))
+
+    for Stypes, ways in Stypes.iteritems():
+        for name in ways:
+            n_name = update_name(name,mapping)
+        if n_name:
+            print name, "=>", n_name
+            
+clean()
+
+print('======================================================================================')
+print('the updated streets  =', len(updated_streets))
+
+
+
+
+# In[7]:
+
+# In[ ]:
+
+# The below code have been taken from udacity openstreet case study , the goal of these functions is extract the data from 
+# baltimore osm file and transfer or load it to csv file including node, nodes_tags,ways,ways_nodes, and ways_tags csv files to prepare this file to be  
+# imported to database. 
+
+OSM_PATH = "Baltimore_sample1.osm"
+
+NODES_PATH = "nodes.csv"
+NODE_TAGS_PATH = "nodes_tags.csv"
+WAYS_PATH = "ways.csv"
+WAY_NODES_PATH = "ways_nodes.csv"
+WAY_TAGS_PATH = "ways_tags.csv"
+
+LOWER_COLON = re.compile(r'^([a-z]|_)+:([a-z]|_)+')
+PROBLEMCHARS = re.compile(r'[=\+/&<>;\'"\?%#$@\,\. \t\r\n]')
+
+SCHEMA = schema.schema
+
+# Make sure the fields order in the csvs matches the column order in the sql table schema
+NODE_FIELDS = ['id', 'lat', 'lon', 'user', 'uid', 'version', 'changeset', 'timestamp']
+NODE_TAGS_FIELDS = ['id', 'key', 'value', 'type']
+WAY_FIELDS = ['id', 'user', 'uid', 'version', 'changeset', 'timestamp']
+WAY_TAGS_FIELDS = ['id', 'key', 'value', 'type']
+WAY_NODES_FIELDS = ['id', 'node_id', 'position']
+
+
+def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIELDS,
+                  problem_chars=PROBLEMCHARS, default_tag_type='regular'):
+    """Clean and shape node or way XML element to Python dict"""
+
+    node_attribs = {}
+    way_attribs = {}
+    way_nodes = []
+    tags = []   
+
+    # YOUR CODE HERE
+    
+    if element.tag == 'node':
+        for attrib in element.attrib:
+            if attrib in NODE_FIELDS:
+                node_attribs[attrib] = element.attrib[attrib]
+        
+        for child in element:
+            nt = {}
+            if LOWER_COLON.match(child.attrib['k']):
+                nt['type'] = child.attrib['k'].split(':',1)[0]
+                nt['key'] = child.attrib['k'].split(':',1)[1]
+                nt['id'] = element.attrib['id']
+                nt['value'] = child.attrib['v']
+                tags.append(nt)
+            elif PROBLEMCHARS.match(child.attrib['k']):
+                continue
+            else:
+                nt['type'] = 'regular'
+                nt['key'] = child.attrib['k']
+                nt['id'] = element.attrib['id']
+                nt['value'] = child.attrib['v']
+                tags.append(nt)
+        
+        return {'node': node_attribs, 'node_tags': tags}
+        
+    elif element.tag == 'way':
+        for attrib in element.attrib:
+            if attrib in WAY_FIELDS:
+                way_attribs[attrib] = element.attrib[attrib]
+        
+        position = 0
+        for child in element:
+            wt = {}
+            wn = {}
+            
+            if child.tag == 'tag':
+                if LOWER_COLON.match(child.attrib['k']):
+                    wt['type'] = child.attrib['k'].split(':',1)[0]
+                    wt['key'] = child.attrib['k'].split(':',1)[1]
+                    wt['id'] = element.attrib['id']
+                    
+                    # we used update_name function to clean the names 
+                    if child.attrib['k'] == 'addr:street':    
+                        wt['value'] = update_name(child.attrib['v'],mapping)
+                    
+                    tags.append(wt)
+                elif PROBLEMCHARS.match(child.attrib['k']):
+                    continue
+                else:
+                    
+                    wt['type'] = 'regular'
+                    wt['key'] = child.attrib['k']
+                    wt['id'] = element.attrib['id']
+                    wt['value'] = child.attrib['v']
+                    tags.append(wt)
+                    
+            elif child.tag == 'nd':
+                wn['id'] = element.attrib['id']
+                wn['node_id'] = child.attrib['ref']
+                wn['position'] = position
+                position += 1
+                way_nodes.append(wn)
+        
+        return {'way': way_attribs, 'way_nodes': way_nodes, 'way_tags': tags}
+
+
+# ================================================== #
+#               Helper Functions                     #
+# ================================================== #
+def get_element(osm_file, tags=('node', 'way', 'relation')):
+    """Yield element if it is the right type of tag"""
+
+    context = ET.iterparse(osm_file, events=('start', 'end'))
+    _, root = next(context)
+    for event, elem in context:
+        if event == 'end' and elem.tag in tags:
+            yield elem
+            root.clear()
+
+
+def validate_element(element, validator, schema=SCHEMA):
+    """Raise ValidationError if element does not match schema"""
+    if validator.validate(element, schema) is not True:
+        field, errors = next(validator.errors.iteritems())
+        message_string = "\nElement of type '{0}' has the following errors:\n{1}"
+        error_string = pprint.pformat(errors)
+        
+        raise Exception(message_string.format(field, error_string))
+
+
+class UnicodeDictWriter(csv.DictWriter, object):
+    """Extend csv.DictWriter to handle Unicode input"""
+
+    def writerow(self, row):
+        super(UnicodeDictWriter, self).writerow({
+            k: (v.encode('utf-8') if isinstance(v, unicode) else v) for k, v in row.iteritems()
+        })
+
+    def writerows(self, rows):
+        for row in rows:
+            self.writerow(row)
+
+
+# ================================================== #
+#               Main Function                        #
+# ================================================== #
+def process_map(file_in, validate):
+    """Iteratively process each XML element and write to csv(s)"""
+
+    with codecs.open(NODES_PATH, 'w') as nodes_file,          codecs.open(NODE_TAGS_PATH, 'w') as nodes_tags_file,          codecs.open(WAYS_PATH, 'w') as ways_file,          codecs.open(WAY_NODES_PATH, 'w') as way_nodes_file,          codecs.open(WAY_TAGS_PATH, 'w') as way_tags_file:
+
+        nodes_writer = UnicodeDictWriter(nodes_file, NODE_FIELDS)
+        node_tags_writer = UnicodeDictWriter(nodes_tags_file, NODE_TAGS_FIELDS)
+        ways_writer = UnicodeDictWriter(ways_file, WAY_FIELDS)
+        way_nodes_writer = UnicodeDictWriter(way_nodes_file, WAY_NODES_FIELDS)
+        way_tags_writer = UnicodeDictWriter(way_tags_file, WAY_TAGS_FIELDS)
+
+        nodes_writer.writeheader()
+        node_tags_writer.writeheader()
+        ways_writer.writeheader()
+        way_nodes_writer.writeheader()
+        way_tags_writer.writeheader()
+
+        validator = cerberus.Validator()
+
+        for element in get_element(file_in, tags=('node', 'way')):
+            el = shape_element(element)
+            if el:
+                if validate is True:
+                    validate_element(el, validator)
+
+                if element.tag == 'node':
+                    nodes_writer.writerow(el['node'])
+                    node_tags_writer.writerows(el['node_tags'])
+                elif element.tag == 'way':
+                    ways_writer.writerow(el['way'])
+                    way_nodes_writer.writerows(el['way_nodes'])
+                    way_tags_writer.writerows(el['way_tags'])
+
+
+if __name__ == '__main__':
+   
+    process_map(OSM_PATH, validate=False)
+
+
+
+
+# In[17]:
+
+from sqlite3 import Error
+
+# this function is to create connect database connection .
+ 
+def create_connection(db_file):
+    try:
+        db_conn = sqlite3.connect(db_file)
+        print(sqlite3.version)
+    except Error as e:
+        print(e)
+    finally:
+        db_conn.close()
+ 
+if __name__ == '__main__':
+    create_connection("db1.db")
+
+
+# In[ ]:
+
+
+
+
+# ### Size of the files: 
+#     - Baltimore_sample1.osm 82.7 MB
+#     - Nodes_tags  1.4 MB 
+#     - Nodes       31.3 MB
+#     - Ways_tags   6 MB 
+#     - Ways        2.6 MB 
+#     - Ways_nodes  10.1
+
+# # Sample of data preparation in the database and a few queries: 
+# 
+# 
+
+# In[ ]:
+
+sqlite> .mode csv
+sqlite> .import nodes_tags.csv nodes_tags
+sqlite> select * from nodes_tags limit 10;
+id,key,value,type
+27031168,ref,5A,regular
+27031168,highway,motorway_junction,regular
+31843417,highway,traffic_signals,regular
+33051348,highway,traffic_signals,regular
+37019198,highway,traffic_signals,regular
+37026058,highway,turning_circle,regular
+37027379,highway,traffic_signals,regular
+37028181,highway,turning_circle,regular
+37031257,traffic_calming,bump,regular
+sqlite> 
+
+sqlite> .mode csv
+sqlite> .import node_tags.csv node_tags
+Error: cannot open "node_tags.csv"
+sqlite> .mode csv
+sqlite> .import nodes_tags.csv nodes_tags
+sqlite> select * from nodes_tags limit 10;
+id,key,value,type
+27031168,ref,5A,regular
+27031168,highway,motorway_junction,regular
+31843417,highway,traffic_signals,regular
+33051348,highway,traffic_signals,regular
+37019198,highway,traffic_signals,regular
+37026058,highway,turning_circle,regular
+37027379,highway,traffic_signals,regular
+37028181,highway,turning_circle,regular
+37031257,traffic_calming,bump,regular
+sqlite> .mode csv
+sqlite> .import ways_nodes.csv ways_nodes
+sqlite> .mode
+Error: mode should be one of: ascii column csv html insert line list tabs tcl
+sqlite> .mode csv
+sqlite> .import ways_tags.csv ways_tags
+sqlite> delete from ways_tags;
+sqlite> select * from ways_tags;
+sqlite> .mode csv 
+sqlite> .import ways_tags.csv ways_tags;
+Error: no such table: ways_tags;
+sqlite> .mode csv
+sqlite> .import ways_tags.csv ways_tags
+sqlite> select * from ways_tags limit 5;
+id,key,value,type
+4892632,lanes,1,regular
+4892632,oneway,yes,regular
+4892632,source,"USGS Ortho",regular
+4892632,bicycle,no,regular
+sqlite> 
+
+
+----------------------------------------
+
+sqlite> select count(*)
+   ...> from ways;
+41112
+sqlite> 
+
+---------------------------------
+sqlite> select count(*) from nodes;
+362300
+----------------------------------
+sqlite> select count(*) from nodes_tags;
+42130
+-----------------------------------
+sqlite> select count(*) from ways_tags;
+182548
+sqlite> 
+----------------------------------
+sqlite> .tables
+nodes       nodes_tags  ways        ways_nodes  ways_tags 
+-----------------------------------
+sqlite> select count(*) from ways_nodes;
+421072
+-----------------------------------
+# This query will select 15 city in the baltimore area:
+
+
+sqlite> select distinct  value from ways_tags where key='city' limit 15;
+Shrewsbury
+"Glen Rock"
+Towson
+"Hunt Valley"
+Cockeysville
+Lutherville
+Parkville
+Pikesville
+Linthicum
+Nottingham
+Baltimore
+Lutherville-Timonium
+Dundalk
+Abingdon
+"Windsor Mill"
+--------------------------------
+# this query will be selected the top 10 active users:
+
+sqlite> select n.user, count(*) from nodes n left outer join ways w on n.uid= w.uid group by n.user  order by count(*) desc limit 10;
+EP_Import,122383
+mpetroff-imports,91587
+asciiphil,52706
+ElliottPlack,35109
+mdroads,14702
+woodpeck_fixbot,11938
+annapolissailor,10278
+RoadGeek_MD99,3493
+Sarr_Cat,3478
+mdroads_import,3167
+sqlite> 
+---------------------------------
+# this query will be selected 8 cuisine in nodes tags
+
+sqlite> select distinct  value from nodes_tags where key='cuisine' limit 8;
+asian
+american
+coffee_shop
+deli
+sandwich
+chinese
+indian
+ice_cream
+
+------------------------------
+# to count number of schools for the ways_tags table
+sqlite> select count(*) from ways_tags where value='school' and key='amenity';
+32
+--------------------------------
+# to check the number of places different religions in Baltimore area.
+sqlite> select  n.value, count(*) from nodes_tags as n left outer join (select distinct(id) from nodes_tags where value='place_of_worship') t on n.id=t.id where  n.key='religion' group by n.value;
+christian,40
+jewish,1
+
+
+# # Conclusion: 
+# 
+# It was good learning process for me from handling the data and warngling it with different technologies and methods including regaluar expressions, xml, sqlite and others. After cleaning and querying the data , we found out data is still incomplete ,there are missing data. For examples , Baltimore has big islamic community which has more than 40 masjid , but there is nothing in the database.   
+# 
+
+# References:
+#     
+# [1] http://www.sqlitetutorial.net/sqlite-python/creating-database/
+# 
+# [2] https://www.tutorialspoint.com/sqlite/sqlite_select_query.htm
+# 
+# [3] https://gist.github.com/swwelch/f1144229848b407e0a5d13fcb7fbbd6f
+# 
+# [4] Udacity-lessons.
+# 
+# [5] udacity - connect's sessions examples.
+# 
+# [6] stackflow- to solve some issues.
+# 
+# [7] http://wiki.openstreetmap.org/wiki/Elements
+# 
+# 
+# 
+# 
+# 
+
+# In[ ]:
+
+
+
